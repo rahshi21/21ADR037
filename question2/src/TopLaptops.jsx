@@ -1,62 +1,77 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 
-const apiUrl = 'http://20.244.56.144/test/companies/AMZ/categories/Laptop/products?top=10&minPrice=1&maxPrice=10000';
+const apiUrl = 'http://20.244.56.144/test';
+const authUrl = `${apiUrl}/auth`;
+const dataUrl = `${apiUrl}/companies/AMZ/categories/Laptop/products?top=10&minPrice=1&maxPrice=10000`;
 
-const TopLaptops = () => {
-  const [laptops, setLaptops] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const App = () => {
+  const [accessToken, setAccessToken] = useState('');
+  const [products, setProducts] = useState([]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(apiUrl, {
-          headers: {
-            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJNYXBDbGFpbXMiOnsiZXhwIjoxNzE4Njg3NTQwLCJpYXQiOjE3MTg2ODcyNDAsImlzcyI6IkFmZm9yZG1lZCIsImp0aSI6Ijg1MzAxYTE2LTJhMWMtNGQ4Yy04OWE3LTI0ODMwZDQ3YjhmZCIsInN1YiI6InJhaHNoaXRoYWtzLjIxYWlkQGtvbmd1LmVkdSJ9LCJjb21wYW55TmFtZSI6IktPTkdVIEVOR0lORUVSSU5HIENPTExFR0UiLCJjbGllbnRJRCI6Ijg1MzAxYTE2LTJhMWMtNGQ4Yy04OWE3LTI0ODMwZDQ3YjhmZCIsImNsaWVudFNlY3JldCI6InhEeVlHekRqTXhndmxlckQiLCJvd25lck5hbWUiOiJSQUhTSElUSEEgSyBTIiwib3duZXJFbWFpbCI6InJhaHNoaXRoYWtzLjIxYWlkQGtvbmd1LmVkdSIsInJvbGxObyI6IjIxQURSMDM3In0.0Swzvye_Z17ZxDmc8GY0qE9Xau3nJNUypY0DzmdsxJI'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-
-        const data = await response.json();
-        setLaptops(data);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Error fetching data. Please try again later.'); // Set an error message
-      } finally {
-        setLoading(false); // Set loading to false whether fetch was successful or not
-      }
+  // Function to authenticate and get access token
+  const authenticateAndGetToken = async () => {
+    const requestBody = {
+      companyName: 'AFFORDMED',
+      clientID: '40913b07-f2f6-4d18-a745-c4619e1fad70',
+      clientSecret: 'FQaDrGmFXOqPkbUl',
+      ownerName: 'vibeesh',
+      ownerEmail: 'vibeeshn.21aid@kongu.edu',
+      rollNo: '21ADR059',
     };
 
-    fetchData();
-  }, []);
+    try {
+      const response = await axios.post(authUrl, requestBody, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-  if (loading) {
-    return <div>Loading...</div>; // Render a loading indicator while fetching data
-  }
+      if (!response.data.access_token) {
+        throw new Error('Access token not received');
+      }
 
-  if (error) {
-    return <div>Error: {error}</div>; // Render an error message if fetch fails
-  }
+      setAccessToken(response.data.access_token);
+    } catch (error) {
+      console.error('Authentication error:', error);
+    }
+  };
+
+  // Function to fetch data using access token
+  const fetchData = async () => {
+    try {
+      const response = await axios.get(dataUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      setProducts(response.data); // Assuming data structure matches expected response
+    } catch (error) {
+      console.error('Data fetching error:', error);
+    }
+  };
+
+  useEffect(() => {
+    authenticateAndGetToken(); // Call authentication on component mount
+  }, []); // Only runs once on mount
+
+  useEffect(() => {
+    if (accessToken) {
+      fetchData(); // Fetch data when accessToken updates
+    }
+  }, [accessToken]); // Runs when accessToken changes
 
   return (
     <div>
-      <h1>Top 10 Laptops Sold on Amazon</h1>
+      <h1>Product List</h1>
       <ul>
-        {laptops.map((laptop, index) => (
-          <li key={index}>
-            <strong>{laptop.productName}</strong>
-            <p>Price: ${laptop.price}</p>
-            <p>Rating: {laptop.rating}</p>
-            <p>Discount: {laptop.discount}%</p>
-            <p>Availability: {laptop.availability}</p>
-          </li>
+        {products.map((product, index) => (
+          <li key={index}>{product.name}</li> // Replace with actual product properties
         ))}
       </ul>
     </div>
   );
 };
 
-export default TopLaptops;
+export default App;
